@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && (request.auth.token.admin == true || request.auth.token.email == 'admin@gmail.com'); 
+    }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    // Multi-tenant root & subcollections: tenants/{tenantId}/...
+    match /tenants/{tenantId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /products/{id} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /categories/{id} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /banners/{id} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /coupons/{id} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /settings/{id} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+
+      match /orders/{id} {
+        allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+        allow create: if true; // Allows guests and customers to create orders
+        allow update: if isAdmin();
+      }
+
+      match /users/{uid} {
+        allow read, update: if isOwner(uid) || isAdmin();
+        allow create: if true;
+      }
+    }
+  }
+}
